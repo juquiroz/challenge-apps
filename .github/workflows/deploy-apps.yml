@@ -85,3 +85,4 @@ jobs:
               docker run -d --name service -p '"$SERVICE_PORT"':8000 '"$SERVICE_REPO"':latest
             ]' \
             --region ca-central-1
+
