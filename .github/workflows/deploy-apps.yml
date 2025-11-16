@@ -1,0 +1,87 @@
+name: Deploy Apps to EC2
+
+on:
+  push:
+    branches:
+      - development
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ca-central-1
+
+      # 🔑 Cargar parámetros desde dev.json o prod.json
+      - name: Load app parameters
+        run: |
+          PARAMS_FILE="parameters/dev.json"
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            PARAMS_FILE="parameters/prod.json"
+          fi
+
+          ADMIN_REPO=$(jq -r '.[] | select(.ParameterKey=="AdminRepo") | .ParameterValue' $PARAMS_FILE)
+          PUBLIC_REPO=$(jq -r '.[] | select(.ParameterKey=="PublicRepo") | .ParameterValue' $PARAMS_FILE)
+          SERVICE_REPO=$(jq -r '.[] | select(.ParameterKey=="ServiceRepo") | .ParameterValue' $PARAMS_FILE)
+          ADMIN_PORT=$(jq -r '.[] | select(.ParameterKey=="AdminPort") | .ParameterValue' $PARAMS_FILE)
+          PUBLIC_PORT=$(jq -r '.[] | select(.ParameterKey=="PublicPort") | .ParameterValue' $PARAMS_FILE)
+          SERVICE_PORT=$(jq -r '.[] | select(.ParameterKey=="ServicePort") | .ParameterValue' $PARAMS_FILE)
+
+          echo "ADMIN_REPO=$ADMIN_REPO" >> $GITHUB_ENV
+          echo "PUBLIC_REPO=$PUBLIC_REPO" >> $GITHUB_ENV
+          echo "SERVICE_REPO=$SERVICE_REPO" >> $GITHUB_ENV
+          echo "ADMIN_PORT=$ADMIN_PORT" >> $GITHUB_ENV
+          echo "PUBLIC_PORT=$PUBLIC_PORT" >> $GITHUB_ENV
+          echo "SERVICE_PORT=$SERVICE_PORT" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com
+
+      - name: Build and push admin-dashboard
+        run: |
+          docker build -t admin-dashboard ./admin-dashboard
+          docker tag admin-dashboard $ADMIN_REPO:latest
+          docker push $ADMIN_REPO:latest
+
+      - name: Build and push public-app
+        run: |
+          docker build -t public-app ./public-app
+          docker tag public-app $PUBLIC_REPO:latest
+          docker push $PUBLIC_REPO:latest
+
+      - name: Build and push service
+        run: |
+          docker build -t service ./service
+          docker tag service $SERVICE_REPO:latest
+          docker push $SERVICE_REPO:latest
+
+      - name: Deploy containers on EC2 via SSM
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Name,Values=cloud-dev" \
+            --comment "Deploy apps" \
+            --parameters 'commands=[
+              docker pull '"$ADMIN_REPO"':latest,
+              docker stop admin-dashboard || true && docker rm admin-dashboard || true,
+              docker run -d --name admin-dashboard -p '"$ADMIN_PORT"':8000 '"$ADMIN_REPO"':latest,
+
+              docker pull '"$PUBLIC_REPO"':latest,
+              docker stop public-app || true && docker rm public-app || true,
+              docker run -d --name public-app -p '"$PUBLIC_PORT"':8000 '"$PUBLIC_REPO"':latest,
+
+              docker pull '"$SERVICE_REPO"':latest,
+              docker stop service || true && docker rm service || true,
+              docker run -d --name service -p '"$SERVICE_PORT"':8000 '"$SERVICE_REPO"':latest
+            ]' \
+            --region ca-central-1
