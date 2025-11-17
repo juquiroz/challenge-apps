@@ -67,30 +67,25 @@ jobs:
 
       - name: Deploy containers on EC2 via SSM
         run: |
-          COMMANDS=$(jq -n --arg admin "$ADMIN_REPO" --arg ap "$ADMIN_PORT" \
-                        --arg public "$PUBLIC_REPO" --arg pp "$PUBLIC_PORT" \
-                        --arg service "$SERVICE_REPO" --arg sp "$SERVICE_PORT" \
-          '[
-            "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
-
-            "docker pull \($admin):latest",
-            "docker stop admin-dashboard || true && docker rm admin-dashboard || true",
-            "docker run -d --name admin-dashboard -p \($ap):8000 \($admin):latest",
-
-            "docker pull \($public):latest",
-            "docker stop public-app || true && docker rm public-app || true",
-            "docker run -d --name public-app -p \($pp):8000 \($public):latest",
-
-            "docker pull \($service):latest",
-            "docker stop service || true && docker rm service || true",
-            "docker run -d --name service -p \($sp):8000 \($service):latest"
-          ]')
-
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
             --targets "Key=tag:Name,Values=cloud-dev" \
-            --comment "Deploy apps" \
-            --parameters "commands=$COMMANDS" \
+            --comment "Deploy apps via docker-compose (separate)" \
+            --parameters 'commands=[
+              "cd /home/ec2-user/apps/admin-dashboard",
+              "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
+              "docker compose pull",
+              "docker compose up -d",
+
+              "cd /home/ec2-user/apps/public-app",
+              "docker compose pull",
+              "docker compose up -d",
+
+              "cd /home/ec2-user/apps/service",
+              "docker compose pull",
+              "docker compose up -d"
+            ]' \
             --region ca-central-1
+
 
 
