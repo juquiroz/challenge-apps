@@ -81,17 +81,17 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --targets "Key=tag:Name,Values=cloud-dev" \
             --comment "Deploy apps via docker-compose (separate)" \
-            --parameters 'commands=[
-              "mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",
+            --parameters "commands=[
+              mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service,
 
-              "aws s3 cp s3://'$DEPLOY_BUCKET'/admin-dashboard/docker-compose.yml /home/ec2-user/apps/admin-dashboard/docker-compose.yml",
-              "aws s3 cp s3://'$DEPLOY_BUCKET'/public-app/docker-compose.yml /home/ec2-user/apps/public-app/docker-compose.yml",
-              "aws s3 cp s3://'$DEPLOY_BUCKET'/service/docker-compose.yml /home/ec2-user/apps/service/docker-compose.yml",
+              aws s3 cp s3://$DEPLOY_BUCKET/admin-dashboard/docker-compose.yml /home/ec2-user/apps/admin-dashboard/docker-compose.yml,
+              aws s3 cp s3://$DEPLOY_BUCKET/public-app/docker-compose.yml /home/ec2-user/apps/public-app/docker-compose.yml,
+              aws s3 cp s3://$DEPLOY_BUCKET/service/docker-compose.yml /home/ec2-user/apps/service/docker-compose.yml,
 
-              "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
+              aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com,
 
-              "cd /home/ec2-user/apps/admin-dashboard && docker compose down && docker compose pull && docker compose up -d",
-              "cd /home/ec2-user/apps/public-app && docker compose down && docker compose pull && docker compose up -d",
-              "cd /home/ec2-user/apps/service && docker compose down && docker compose pull && docker compose up -d"
-            ]' \
+              cd /home/ec2-user/apps/admin-dashboard && docker compose down && docker compose pull && docker compose up -d,
+              cd /home/ec2-user/apps/public-app && docker compose down && docker compose pull && docker compose up -d,
+              cd /home/ec2-user/apps/service && docker compose down && docker compose pull && docker compose up -d
+            ]" \
             --region ca-central-1
