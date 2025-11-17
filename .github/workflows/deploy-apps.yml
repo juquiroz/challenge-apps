@@ -71,6 +71,8 @@ jobs:
                         --arg public "$PUBLIC_REPO" --arg pp "$PUBLIC_PORT" \
                         --arg service "$SERVICE_REPO" --arg sp "$SERVICE_PORT" \
           '[
+            "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
+
             "docker pull \($admin):latest",
             "docker stop admin-dashboard || true && docker rm admin-dashboard || true",
             "docker run -d --name admin-dashboard -p \($ap):8000 \($admin):latest",
@@ -90,4 +92,5 @@ jobs:
             --comment "Deploy apps" \
             --parameters "commands=$COMMANDS" \
             --region ca-central-1
+
 
