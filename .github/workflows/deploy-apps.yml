@@ -84,7 +84,8 @@ jobs:
             --targets "Key=tag:Name,Values=cloud-dev" \
             --comment "Deploy apps via docker-compose (separate)" \
             --parameters 'commands=[
-              "mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",
+              "sudo mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",
+              "sudo chown -R ec2-user:ec2-user /home/ec2-user/apps",
               "docker compose version || docker-compose version || sudo yum install -y docker-compose-plugin || true",
               "curl -L https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-Linux-x86_64 -o /usr/local/bin/docker-compose",
               "chmod +x /usr/local/bin/docker-compose",
@@ -96,5 +97,5 @@ jobs:
               "cd /home/ec2-user/apps/admin-dashboard && docker-compose down && docker-compose pull && docker-compose up -d",
               "cd /home/ec2-user/apps/public-app && docker-compose down && docker-compose pull && docker-compose up -d",
               "cd /home/ec2-user/apps/service && docker-compose down && docker-compose pull && docker-compose up -d"
-            ]' \
+            ]'
             --region ca-central-1
