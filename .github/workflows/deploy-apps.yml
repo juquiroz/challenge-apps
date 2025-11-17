@@ -71,18 +71,17 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --targets "Key=tag:Name,Values=cloud-dev" \
             --comment "Deploy apps" \
-            --parameters 'commands=[
-              
-              docker pull '"$ADMIN_REPO"':latest,
-              docker stop admin-dashboard || true && docker rm admin-dashboard || true,
-              docker run -d --name admin-dashboard -p '"$ADMIN_PORT"':8000 '"$ADMIN_REPO"':latest,
+            --parameters commands='[
+              "docker pull '${ADMIN_REPO}':latest",
+              "docker stop admin-dashboard || true && docker rm admin-dashboard || true",
+              "docker run -d --name admin-dashboard -p '${ADMIN_PORT}':8000 '${ADMIN_REPO}':latest",
 
-              docker pull '"$PUBLIC_REPO"':latest,
-              docker stop public-app || true && docker rm public-app || true,
-              docker run -d --name public-app -p '"$PUBLIC_PORT"':8000 '"$PUBLIC_REPO"':latest,
+              "docker pull '${PUBLIC_REPO}':latest",
+              "docker stop public-app || true && docker rm public-app || true",
+              "docker run -d --name public-app -p '${PUBLIC_PORT}':8000 '${PUBLIC_REPO}':latest",
 
-              docker pull '"$SERVICE_REPO"':latest,
-              docker stop service || true && docker rm service || true,
-              docker run -d --name service -p '"$SERVICE_PORT"':8000 '"$SERVICE_REPO"':latest
+              "docker pull '${SERVICE_REPO}':latest",
+              "docker stop service || true && docker rm service || true",
+              "docker run -d --name service -p '${SERVICE_PORT}':8000 '${SERVICE_REPO}':latest"
             ]' \
             --region ca-central-1
