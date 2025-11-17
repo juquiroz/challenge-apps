@@ -65,6 +65,14 @@ jobs:
           docker tag service $SERVICE_REPO:latest
           docker push $SERVICE_REPO:latest
 
+      # 📦 Subir los docker-compose.yml a S3
+      - name: Upload docker-compose files to S3
+        run: |
+          aws s3 cp ./admin-dashboard/docker-compose.yml s3://my-deploy-bucket/admin-dashboard/docker-compose.yml
+          aws s3 cp ./public-app/docker-compose.yml s3://my-deploy-bucket/public-app/docker-compose.yml
+          aws s3 cp ./service/docker-compose.yml s3://my-deploy-bucket/service/docker-compose.yml
+
+      # 🚀 Desplegar en EC2 vía SSM
       - name: Deploy containers on EC2 via SSM
         run: |
           aws ssm send-command \
@@ -72,24 +80,16 @@ jobs:
             --targets "Key=tag:Name,Values=cloud-dev" \
             --comment "Deploy apps via docker-compose (separate)" \
             --parameters 'commands=[
-              "cd /home/ec2-user/apps/admin-dashboard",
+              "mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",
+
+              "aws s3 cp s3://my-deploy-bucket/admin-dashboard/docker-compose.yml /home/ec2-user/apps/admin-dashboard/docker-compose.yml",
+              "aws s3 cp s3://my-deploy-bucket/public-app/docker-compose.yml /home/ec2-user/apps/public-app/docker-compose.yml",
+              "aws s3 cp s3://my-deploy-bucket/service/docker-compose.yml /home/ec2-user/apps/service/docker-compose.yml",
+
               "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
-              "docker compose down",
-              "docker compose pull",
-              "docker compose up -d",
 
-              "cd /home/ec2-user/apps/public-app",
-              "docker compose down",
-              "docker compose pull",
-              "docker compose up -d",
-
-              "cd /home/ec2-user/apps/service",
-              "docker compose down",
-              "docker compose pull",
-              "docker compose up -d"
+              "cd /home/ec2-user/apps/admin-dashboard && docker compose down && docker compose pull && docker compose up -d",
+              "cd /home/ec2-user/apps/public-app && docker compose down && docker compose pull && docker compose up -d",
+              "cd /home/ec2-user/apps/service && docker compose down && docker compose pull && docker compose up -d"
             ]' \
             --region ca-central-1
-
-
-
-
