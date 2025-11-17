@@ -70,10 +70,10 @@ jobs:
       # 📦 Subir los docker-compose.yml a S3 (usando bucket dinámico)
       - name: Upload docker-compose files to S3
         run: |
-          aws s3 cp ./admin-dashboard/docker-compose.yml s3://$DEPLOY_BUCKET/admin-dashboard/docker-compose.yml
-          aws s3 cp ./public-app/docker-compose.yml s3://$DEPLOY_BUCKET/public-app/docker-compose.yml
-          aws s3 cp ./service/docker-compose.yml s3://$DEPLOY_BUCKET/service/docker-compose.yml
-
+          aws s3 cp ./admin-dashboard/docker-compose.yml "s3://$DEPLOY_BUCKET/admin-dashboard/docker-compose.yml"
+          aws s3 cp ./public-app/docker-compose.yml "s3://$DEPLOY_BUCKET/public-app/docker-compose.yml"
+          aws s3 cp ./service/docker-compose.yml "s3://$DEPLOY_BUCKET/service/docker-compose.yml"
+          
       # 🚀 Desplegar en EC2 vía SSM
       - name: Deploy containers on EC2 via SSM
         run: |
