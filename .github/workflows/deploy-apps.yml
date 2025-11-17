@@ -37,7 +37,7 @@ jobs:
           SERVICE_PORT=$(jq -r '.[] | select(.ParameterKey=="ServicePort") | .ParameterValue' $PARAMS_FILE)
           DEPLOY_BUCKET=$(jq -r '.[] | select(.ParameterKey=="DeployBucketName") | .ParameterValue' $PARAMS_FILE)
           COMPOSE_FILE=$(jq -r '.[] | select(.ParameterKey=="ComposeFileName") | .ParameterValue' $PARAMS_FILE)
-          
+          INSTANCE_NAME=$(jq -r '.[] | select(.ParameterKey=="InstanceName") | .ParameterValue' $PARAMS_FILE)
 
           echo "ADMIN_REPO=$ADMIN_REPO" >> $GITHUB_ENV
           echo "PUBLIC_REPO=$PUBLIC_REPO" >> $GITHUB_ENV
@@ -47,6 +47,7 @@ jobs:
           echo "SERVICE_PORT=$SERVICE_PORT" >> $GITHUB_ENV
           echo "DEPLOY_BUCKET=$DEPLOY_BUCKET" >> $GITHUB_ENV
           echo "COMPOSE_FILE=$COMPOSE_FILE" >> $GITHUB_ENV
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
 
       - name: Login to Amazon ECR
         run: |
@@ -81,7 +82,7 @@ jobs:
         run: |
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --targets "Key=tag:Name,Values=cloud-dev" \
+            --targets "Key=tag:Name,Values=${INSTANCE_NAME}" \
             --comment "Deploy apps via docker-compose (separate)" \
             --parameters 'commands=[
               "sudo mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",

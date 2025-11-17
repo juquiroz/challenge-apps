@@ -6,5 +6,6 @@
   { "ParameterKey": "PublicPort", "ParameterValue": "80" },
   { "ParameterKey": "ServicePort", "ParameterValue": "3000" },
   { "ParameterKey": "DeployBucketName", "ParameterValue": "dev-deploy-bucket-039612870052"},
-  { "ParameterKey": "ComposeFileName", "ParameterValue": "docker-compose-dev.yml"}
+  { "ParameterKey": "ComposeFileName", "ParameterValue": "docker-compose-dev.yml"},
+  {"ParameterKey": "InstanceName", "ParameterValue": "cloud-dev"}
 ]
