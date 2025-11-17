@@ -72,6 +72,7 @@ jobs:
             --targets "Key=tag:Name,Values=cloud-dev" \
             --comment "Deploy apps" \
             --parameters 'commands=[
+              
               docker pull '"$ADMIN_REPO"':latest,
               docker stop admin-dashboard || true && docker rm admin-dashboard || true,
               docker run -d --name admin-dashboard -p '"$ADMIN_PORT"':8000 '"$ADMIN_REPO"':latest,
@@ -85,4 +86,3 @@ jobs:
               docker run -d --name service -p '"$SERVICE_PORT"':8000 '"$SERVICE_REPO"':latest
             ]' \
             --region ca-central-1
-
