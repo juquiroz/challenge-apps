@@ -3,8 +3,6 @@ services:
     image: 039612870052.dkr.ecr.ca-central-1.amazonaws.com/public-app:latest
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     volumes:
       - app-data:/data
     restart: unless-stopped

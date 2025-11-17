@@ -3,8 +3,6 @@ services:
     image: 039612870052.dkr.ecr.ca-central-1.amazonaws.com/service:latest
     ports:
       - "5000:5000"
-    env_file:
-      - .env
     restart: unless-stopped
     networks:
      - cloudnet
