@@ -5,5 +5,5 @@
   { "ParameterKey": "AdminPort", "ParameterValue": "9000" },
   { "ParameterKey": "PublicPort", "ParameterValue": "80" },
   { "ParameterKey": "ServicePort", "ParameterValue": "3000" },
-  { "ParameterKey": "DeployBucketName", "ParameterValue": "dev-deploy-bucket-039612870052 "}
+  { "ParameterKey": "DeployBucketName", "ParameterValue": "dev-deploy-bucket-039612870052"}
 ]
