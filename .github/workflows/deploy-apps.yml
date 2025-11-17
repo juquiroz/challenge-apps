@@ -93,3 +93,4 @@ jobs:
               "cd /home/ec2-user/apps/service && docker compose down && docker compose pull && docker compose up -d"
             ]' \
             --region ca-central-1
+
