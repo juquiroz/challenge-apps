@@ -1,0 +1,127 @@
+name: Deploy Apps to EC2
+
+on:
+  push:
+    branches:
+      - development
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ca-central-1
+
+      # 🔑 Cargar parámetros desde dev.json o prod.json
+      - name: Load app parameters
+        run: |
+          PARAMS_FILE="parameters/dev.json"
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            PARAMS_FILE="parameters/prod.json"
+          fi
+
+          ADMIN_REPO=$(jq -r '.[] | select(.ParameterKey=="AdminRepo") | .ParameterValue' $PARAMS_FILE)
+          PUBLIC_REPO=$(jq -r '.[] | select(.ParameterKey=="PublicRepo") | .ParameterValue' $PARAMS_FILE)
+          SERVICE_REPO=$(jq -r '.[] | select(.ParameterKey=="ServiceRepo") | .ParameterValue' $PARAMS_FILE)
+          ADMIN_PORT=$(jq -r '.[] | select(.ParameterKey=="AdminPort") | .ParameterValue' $PARAMS_FILE)
+          PUBLIC_PORT=$(jq -r '.[] | select(.ParameterKey=="PublicPort") | .ParameterValue' $PARAMS_FILE)
+          SERVICE_PORT=$(jq -r '.[] | select(.ParameterKey=="ServicePort") | .ParameterValue' $PARAMS_FILE)
+          DEPLOY_BUCKET=$(jq -r '.[] | select(.ParameterKey=="DeployBucketName") | .ParameterValue' $PARAMS_FILE)
+          COMPOSE_FILE=$(jq -r '.[] | select(.ParameterKey=="ComposeFileName") | .ParameterValue' $PARAMS_FILE)
+          INSTANCE_NAME=$(jq -r '.[] | select(.ParameterKey=="InstanceName") | .ParameterValue' $PARAMS_FILE)
+
+          echo "ADMIN_REPO=$ADMIN_REPO" >> $GITHUB_ENV
+          echo "PUBLIC_REPO=$PUBLIC_REPO" >> $GITHUB_ENV
+          echo "SERVICE_REPO=$SERVICE_REPO" >> $GITHUB_ENV
+          echo "ADMIN_PORT=$ADMIN_PORT" >> $GITHUB_ENV
+          echo "PUBLIC_PORT=$PUBLIC_PORT" >> $GITHUB_ENV
+          echo "SERVICE_PORT=$SERVICE_PORT" >> $GITHUB_ENV
+          echo "DEPLOY_BUCKET=$DEPLOY_BUCKET" >> $GITHUB_ENV
+          echo "COMPOSE_FILE=$COMPOSE_FILE" >> $GITHUB_ENV
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com
+
+      - name: Build and push admin-dashboard
+        run: |
+          docker build -t admin-dashboard ./admin-dashboard
+          docker tag admin-dashboard $ADMIN_REPO:latest
+          docker push $ADMIN_REPO:latest
+
+      - name: Build and push public-app
+        run: |
+          docker build -t public-app ./public-app
+          docker tag public-app $PUBLIC_REPO:latest
+          docker push $PUBLIC_REPO:latest
+
+      - name: Build and push service
+        run: |
+          docker build -t service ./service
+          docker tag service $SERVICE_REPO:latest
+          docker push $SERVICE_REPO:latest
+
+      # 📦 Subir los docker-compose.yml a S3
+      - name: Upload docker-compose files to S3
+        run: |
+          aws s3 cp ./admin-dashboard/${COMPOSE_FILE} "s3://$DEPLOY_BUCKET/admin-dashboard/${COMPOSE_FILE}"
+          aws s3 cp ./public-app/${COMPOSE_FILE} "s3://$DEPLOY_BUCKET/public-app/${COMPOSE_FILE}"
+          aws s3 cp ./service/${COMPOSE_FILE} "s3://$DEPLOY_BUCKET/service/${COMPOSE_FILE}"
+
+      # 📦 Subir todos los .env* a S3
+      - name: Upload .env files to S3
+        run: |
+          # Admin Dashboard: subir .env* y schema.sql
+          aws s3 cp ./admin-dashboard/ s3://$DEPLOY_BUCKET/admin-dashboard/ --recursive --exclude "*" --include ".env*" --include "schema.sql"
+          aws s3 cp ./public-app/ s3://$DEPLOY_BUCKET/public-app/ --recursive --exclude "*" --include ".env*"
+          aws s3 cp ./service/ s3://$DEPLOY_BUCKET/service/ --recursive --exclude "*" --include ".env*"
+
+      - name: Deploy containers on EC2 via SSM
+        run: |
+          CMD_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Name,Values=${INSTANCE_NAME}" \
+            --comment "Deploy apps via docker-compose with S3 diagnostics" \
+            --parameters 'commands=[
+              "echo ==== START DEPLOYMENT ====",
+              "whoami",
+              "pwd",
+              "sudo mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",
+              "sudo chown -R ec2-user:ec2-user /home/ec2-user/apps",
+              "echo ==== COPYING FILES FROM S3 ====",
+              "aws s3 cp s3://'$DEPLOY_BUCKET'/admin-dashboard/ /home/ec2-user/apps/admin-dashboard/ --recursive",
+              "aws s3 cp s3://'$DEPLOY_BUCKET'/public-app/ /home/ec2-user/apps/public-app/ --recursive",
+              "aws s3 cp s3://'$DEPLOY_BUCKET'/service/ /home/ec2-user/apps/service/ --recursive",
+              "echo ==== SETUP DOCKER COMPOSE ====",
+              "docker-compose version || sudo yum install -y docker-compose-plugin || true",
+              "curl -L https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-Linux-x86_64 -o /usr/local/bin/docker-compose",
+              "chmod +x /usr/local/bin/docker-compose",
+              "ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true",
+              "docker network create cloudnet || true",
+              "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
+              "echo ==== DEPLOYING CONTAINERS ====",
+              "cd /home/ec2-user/apps/admin-dashboard && docker-compose -f docker-compose-dev.yml down -v && docker-compose -f docker-compose-dev.yml pull && docker-compose -f docker-compose-dev.yml up -d --build",
+              "cd /home/ec2-user/apps/public-app && docker-compose -f docker-compose-dev.yml down -v && docker-compose -f docker-compose-dev.yml pull && docker-compose -f docker-compose-dev.yml up -d --build",
+              "cd /home/ec2-user/apps/service && docker-compose -f docker-compose-dev.yml down -v && docker-compose -f docker-compose-dev.yml pull && docker-compose -f docker-compose-dev.yml up -d --build",
+              "echo ==== DONE ===="
+            ]' \
+            --region ca-central-1 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM CommandId: $CMD_ID"
+
+          aws ssm list-command-invocations \
+            --command-id $CMD_ID \
+            --details \
+            --region ca-central-1

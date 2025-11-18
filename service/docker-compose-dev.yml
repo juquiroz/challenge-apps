@@ -1,0 +1,13 @@
+services:
+  service:
+    image: 039612870052.dkr.ecr.ca-central-1.amazonaws.com/service:latest
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    networks:
+     - cloudnet
+
+
+networks:
+  cloudnet:
+    external: true
