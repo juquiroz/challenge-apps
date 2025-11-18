@@ -85,30 +85,52 @@ jobs:
           aws s3 cp ./public-app/ s3://$DEPLOY_BUCKET/public-app/ --recursive --exclude "*" --include ".env*"
           aws s3 cp ./service/ s3://$DEPLOY_BUCKET/service/ --recursive --exclude "*" --include ".env*"
 
-      # 🚀 Desplegar en EC2 vía SSM
       - name: Deploy containers on EC2 via SSM
         run: |
-          aws ssm send-command \
+          CMD_ID=$(aws ssm send-command \
             --document-name "AWS-RunShellScript" \
             --targets "Key=tag:Name,Values=${INSTANCE_NAME}" \
-            --comment "Deploy apps via docker-compose (separate)" \
+            --comment "Deploy apps via docker-compose with S3 diagnostics" \
             --parameters 'commands=[
+              "echo ==== START DEPLOYMENT ====",
+              "whoami",
+              "pwd",
               "sudo mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",
               "sudo chown -R ec2-user:ec2-user /home/ec2-user/apps",
+              "echo ==== CHECKING S3 CONTENTS ====",
+              "aws s3 ls s3://'$DEPLOY_BUCKET'/admin-dashboard/",
+              "aws s3 ls s3://'$DEPLOY_BUCKET'/public-app/",
+              "aws s3 ls s3://'$DEPLOY_BUCKET'/service/",
+              "echo ==== COPYING FILES FROM S3 ====",
+              "aws s3 cp s3://'$DEPLOY_BUCKET'/admin-dashboard/ /home/ec2-user/apps/admin-dashboard/ --recursive",
+              "aws s3 cp s3://'$DEPLOY_BUCKET'/public-app/ /home/ec2-user/apps/public-app/ --recursive",
+              "aws s3 cp s3://'$DEPLOY_BUCKET'/service/ /home/ec2-user/apps/service/ --recursive",
+              "echo ==== VALIDATING COPIED FILES ====",
+              "ls -l /home/ec2-user/apps/admin-dashboard",
+              "ls -l /home/ec2-user/apps/public-app",
+              "ls -l /home/ec2-user/apps/service",
+              "echo ==== SETUP DOCKER COMPOSE ====",
               "docker-compose version || sudo yum install -y docker-compose-plugin || true",
               "curl -L https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-Linux-x86_64 -o /usr/local/bin/docker-compose",
               "chmod +x /usr/local/bin/docker-compose",
               "ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true",
               "docker network create cloudnet || true",
-              "aws s3 cp s3://$DEPLOY_BUCKET/admin-dashboard/ /home/ec2-user/apps/admin-dashboard/ --recursive",
-              "aws s3 cp s3://$DEPLOY_BUCKET/public-app/ /home/ec2-user/apps/public-app/ --recursive",
-              "aws s3 cp s3://$DEPLOY_BUCKET/service/ /home/ec2-user/apps/service/ --recursive",
               "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
+              "echo ==== DEPLOYING CONTAINERS ====",
               "cd /home/ec2-user/apps/admin-dashboard && docker-compose down && docker-compose pull && docker-compose up -d",
               "cd /home/ec2-user/apps/public-app && docker-compose down && docker-compose pull && docker-compose up -d",
               "cd /home/ec2-user/apps/service && docker-compose down && docker-compose pull && docker-compose up -d",
-              "ls -l /home/ec2-user/apps/admin-dashboard",
-              "ls -l /home/ec2-user/apps/public-app",
-              "ls -l /home/ec2-user/apps/service"
+              "echo ==== DONE ===="
             ]' \
+            --region ca-central-1 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM CommandId: $CMD_ID"
+
+          aws ssm list-command-invocations \
+            --command-id $CMD_ID \
+            --details \
             --region ca-central-1
+
+                  --region ca-central-1

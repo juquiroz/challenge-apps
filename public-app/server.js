@@ -5,7 +5,7 @@ const fs = require('fs');
 const axios = require('axios');
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 3000;
 const SERVICE_URL = process.env.SERVICE_URL || 'http://service:3000';
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const DB_PATH = path.join(DATA_DIR, 'app.db');

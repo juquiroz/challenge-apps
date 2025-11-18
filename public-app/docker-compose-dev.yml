@@ -2,7 +2,7 @@ services:
   public-app:
     image: 039612870052.dkr.ecr.ca-central-1.amazonaws.com/public-app:latest
     ports:
-      - "8000:8000"
+      - "8000:3000"
     volumes:
       - app-data:/data
     restart: unless-stopped
