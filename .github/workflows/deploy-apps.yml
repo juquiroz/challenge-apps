@@ -39,16 +39,6 @@ jobs:
           COMPOSE_FILE=$(jq -r '.[] | select(.ParameterKey=="ComposeFileName") | .ParameterValue' $PARAMS_FILE)
           INSTANCE_NAME=$(jq -r '.[] | select(.ParameterKey=="InstanceName") | .ParameterValue' $PARAMS_FILE)
 
-          echo "ADMIN_REPO=$ADMIN_REPO"
-          echo "PUBLIC_REPO=$PUBLIC_REPO"
-          echo "SERVICE_REPO=$SERVICE_REPO"
-          echo "ADMIN_PORT=$ADMIN_PORT"
-          echo "PUBLIC_PORT=$PUBLIC_PORT"
-          echo "SERVICE_PORT=$SERVICE_PORT"
-          echo "DEPLOY_BUCKET=$DEPLOY_BUCKET"
-          echo "COMPOSE_FILE=$COMPOSE_FILE"
-          echo "INSTANCE_NAME=$INSTANCE_NAME"
-
           echo "ADMIN_REPO=$ADMIN_REPO" >> $GITHUB_ENV
           echo "PUBLIC_REPO=$PUBLIC_REPO" >> $GITHUB_ENV
           echo "SERVICE_REPO=$SERVICE_REPO" >> $GITHUB_ENV
@@ -81,13 +71,21 @@ jobs:
           docker tag service $SERVICE_REPO:latest
           docker push $SERVICE_REPO:latest
 
-      # 📦 Subir los docker-compose.yml a S3 (usando bucket dinámico)
+      # 📦 Subir los docker-compose.yml a S3
       - name: Upload docker-compose files to S3
         run: |
           aws s3 cp ./admin-dashboard/${COMPOSE_FILE} "s3://$DEPLOY_BUCKET/admin-dashboard/${COMPOSE_FILE}"
           aws s3 cp ./public-app/${COMPOSE_FILE} "s3://$DEPLOY_BUCKET/public-app/${COMPOSE_FILE}"
           aws s3 cp ./service/${COMPOSE_FILE} "s3://$DEPLOY_BUCKET/service/${COMPOSE_FILE}"
 
+      # 📦 Subir todos los .env* a S3
+      - name: Upload .env files to S3
+        run: |
+          aws s3 cp ./admin-dashboard/ s3://$DEPLOY_BUCKET/admin-dashboard/ --recursive --exclude "*" --include ".env*"
+          aws s3 cp ./public-app/ s3://$DEPLOY_BUCKET/public-app/ --recursive --exclude "*" --include ".env*"
+          aws s3 cp ./service/ s3://$DEPLOY_BUCKET/service/ --recursive --exclude "*" --include ".env*"
+
+      # 🚀 Desplegar en EC2 vía SSM
       - name: Deploy containers on EC2 via SSM
         run: |
           aws ssm send-command \
@@ -105,9 +103,15 @@ jobs:
               "aws s3 cp s3://$DEPLOY_BUCKET/admin-dashboard/${COMPOSE_FILE} /home/ec2-user/apps/admin-dashboard/docker-compose.yml",
               "aws s3 cp s3://$DEPLOY_BUCKET/public-app/${COMPOSE_FILE} /home/ec2-user/apps/public-app/docker-compose.yml",
               "aws s3 cp s3://$DEPLOY_BUCKET/service/${COMPOSE_FILE} /home/ec2-user/apps/service/docker-compose.yml",
+              "aws s3 cp s3://$DEPLOY_BUCKET/admin-dashboard/ /home/ec2-user/apps/admin-dashboard/ --recursive --exclude '*' --include '.env*'",
+              "aws s3 cp s3://$DEPLOY_BUCKET/public-app/ /home/ec2-user/apps/public-app/ --recursive --exclude '*' --include '.env*'",
+              "aws s3 cp s3://$DEPLOY_BUCKET/service/ /home/ec2-user/apps/service/ --recursive --exclude '*' --include '.env*'",
               "aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin 039612870052.dkr.ecr.ca-central-1.amazonaws.com",
               "cd /home/ec2-user/apps/admin-dashboard && docker-compose down && docker-compose pull && docker-compose up -d",
               "cd /home/ec2-user/apps/public-app && docker-compose down && docker-compose pull && docker-compose up -d",
-              "cd /home/ec2-user/apps/service && docker-compose down && docker-compose pull && docker-compose up -d"
+              "cd /home/ec2-user/apps/service && docker-compose down && docker-compose pull && docker-compose up -d",
+              "ls -l /home/ec2-user/apps/admin-dashboard",
+              "ls -l /home/ec2-user/apps/public-app",
+              "ls -l /home/ec2-user/apps/service"
             ]' \
             --region ca-central-1
