@@ -106,10 +106,14 @@ Uso de red interna cloudnet para comunicación segura.
     Service:
         Endpoints de lógica de negocio.
 
+# 🚀 Parametros
 
+![Parameters](/wiki/parameters-deploy-apps.png)
 
-public-app
+Public-app
 
-![Texto alternativo](/wiki/public-app.png)
+![Public App Operativo](/wiki/public-app.png)
 
-![Texto alternativo](/wiki/admin-dashboard.png)
+Admin-dashboard
+
+![Admin Dashboard Operativo](/wiki/admin-dashboard.png)
