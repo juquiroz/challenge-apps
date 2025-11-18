@@ -105,3 +105,9 @@ Uso de red interna cloudnet para comunicación segura.
 
     Service:
         Endpoints de lógica de negocio.
+
+
+
+public-app
+
+![Texto alternativo](public-app.png)
