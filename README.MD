@@ -68,9 +68,9 @@
 
     Dev hace commit en GitHub.
 
-    Workflow construye imágenes y las sube a ECR.
+    Workflow se construyen imágenes y las sube a ECR.
 
-    Workflow sube compose .env y schema.sql a S3.
+    Workflow se suben compose .env y schema.sql a S3.
 
     Workflow ejecuta SSM → EC2 descarga archivos de S3.
 
@@ -88,11 +88,11 @@
 
 # 🚀 Escalabilidad
 
-Infraestructura lista para migrar a ECS/EKS.
+    Infraestructura lista para migrar a ECS/EKS.
 
-Separación de apps en contenedores independientes.
+    Separación de apps en contenedores independientes.
 
-Uso de red interna cloudnet para comunicación segura.
+    Uso de red interna cloudnet para comunicación segura.
 
 
 # 📦 Endpoints
