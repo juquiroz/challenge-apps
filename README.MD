@@ -110,4 +110,6 @@ Uso de red interna cloudnet para comunicación segura.
 
 public-app
 
-![Texto alternativo](public-app.png)
+![Texto alternativo](/wiki/public-app.png)
+
+![Texto alternativo](/wiki/admin-dashboard.png)
