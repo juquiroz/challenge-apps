@@ -5,6 +5,8 @@ services:
     image: 039612870052.dkr.ecr.ca-central-1.amazonaws.com/admin-dashboard:latest
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     restart: unless-stopped
     depends_on:
       - mysql
@@ -18,6 +20,8 @@ services:
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
     ports:
       - "3306:3306"
+    env_file:
+      - .env.mysql
     restart: unless-stopped
     networks:
       - cloudnet
