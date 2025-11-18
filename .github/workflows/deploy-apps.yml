@@ -81,7 +81,8 @@ jobs:
       # 📦 Subir todos los .env* a S3
       - name: Upload .env files to S3
         run: |
-          aws s3 cp ./admin-dashboard/ s3://$DEPLOY_BUCKET/admin-dashboard/ --recursive --exclude "*" --include ".env*"
+          # Admin Dashboard: subir .env* y schema.sql
+          aws s3 cp ./admin-dashboard/ s3://$DEPLOY_BUCKET/admin-dashboard/ --recursive --exclude "*" --include ".env*" --include "schema.sql"
           aws s3 cp ./public-app/ s3://$DEPLOY_BUCKET/public-app/ --recursive --exclude "*" --include ".env*"
           aws s3 cp ./service/ s3://$DEPLOY_BUCKET/service/ --recursive --exclude "*" --include ".env*"
 
@@ -97,18 +98,10 @@ jobs:
               "pwd",
               "sudo mkdir -p /home/ec2-user/apps/admin-dashboard /home/ec2-user/apps/public-app /home/ec2-user/apps/service",
               "sudo chown -R ec2-user:ec2-user /home/ec2-user/apps",
-              "echo ==== CHECKING S3 CONTENTS ====",
-              "aws s3 ls s3://'$DEPLOY_BUCKET'/admin-dashboard/",
-              "aws s3 ls s3://'$DEPLOY_BUCKET'/public-app/",
-              "aws s3 ls s3://'$DEPLOY_BUCKET'/service/",
               "echo ==== COPYING FILES FROM S3 ====",
               "aws s3 cp s3://'$DEPLOY_BUCKET'/admin-dashboard/ /home/ec2-user/apps/admin-dashboard/ --recursive",
               "aws s3 cp s3://'$DEPLOY_BUCKET'/public-app/ /home/ec2-user/apps/public-app/ --recursive",
               "aws s3 cp s3://'$DEPLOY_BUCKET'/service/ /home/ec2-user/apps/service/ --recursive",
-              "echo ==== VALIDATING COPIED FILES ====",
-              "ls -l /home/ec2-user/apps/admin-dashboard",
-              "ls -l /home/ec2-user/apps/public-app",
-              "ls -l /home/ec2-user/apps/service",
               "echo ==== SETUP DOCKER COMPOSE ====",
               "docker-compose version || sudo yum install -y docker-compose-plugin || true",
               "curl -L https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-Linux-x86_64 -o /usr/local/bin/docker-compose",
